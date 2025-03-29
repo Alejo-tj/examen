@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Tareas</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-primary">Lista de Tareas</h1>
+            <a href="?cerrar_sesion=1" class="btn btn-outline-danger">Cerrar Sesión</a>
+        </div>
+        <div class="card shadow-lg">
+            <div class="card-header bg-primary text-white text-center">
+                <h2>Lista de Tareas para {{ persona.nombre }}</h2>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tarea in tareas %}
+                        <tr>
+                            <td>{{ tarea.title }}</td>
+                            <td>{{ tarea.description }}</td>
+                            <td>
+                                {% if tarea.completed %}
+                                    <span class="badge bg-success">✔️ Completada</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">❌ Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'editar_tarea' tarea.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                <a href="{% url 'eliminar_tarea' tarea.id %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="text-center mt-4">
+                    <a href="{% url 'crear_tarea' persona.id %}" class="btn btn-success">Crear Nueva Tarea</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

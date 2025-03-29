@@ -20,9 +20,14 @@ from tasks import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('seccion/', views.inicio_seccion, name='seccion'),
+    path('seccion/', views.iniciar_sesion, name='seccion'),
     path('',views.register_view, name='registro'),
-    path('crear', views.create_task, name='crear'),
-    path('ver_ lista', views.task_list, name='ver_lista'),
-   
+    path('tareas/<int:persona_id>/', views.lista_tareas, name='lista_tareas'),
+    path('tareas/<int:persona_id>/crear/', views.crear_tarea, name='crear_tarea'),
+    path('tareas/editar/<int:tarea_id>/', views.editar_tarea, name='editar_tarea'),
+    path('tareas/eliminar/<int:tarea_id>/', views.eliminar_tarea, name='eliminar_tarea'),
 ]
+
+    
+   
+

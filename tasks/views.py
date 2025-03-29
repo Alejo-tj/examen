@@ -1,83 +1,102 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from .models import User, Task
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import logout
 from django.contrib import messages
-
+from .models import persona, Task
 
 
 def register_view(request):
+    # Registro de usuarios nuevos
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
         correo = request.POST.get('correo')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
 
-        # Validar que las contraseñas coinciden
-        if password != confirm_password:
-            messages.error(request, 'Las contraseñas no coinciden.')
-        else:
-            # Comprobar si el correo ya está registrado
-            if User.objects.filter(correo=correo).exists():
-                messages.error(request, 'El correo ya está registrado.')
-            else:
-                # Crear y guardar el usuario sin encriptar la contraseña
-                user = User(nombre=nombre, correo=correo, password=password)  # Guardar la contraseña tal cual
-                user.save()
-
-                # Autenticar y loguear al usuario
-                user = authenticate(request, correo=correo, password=password)
-                if user is not None:
-                    login(request, user)
-
-                messages.success(request, '¡Te has registrado exitosamente!')
-                return redirect('seccion')  # Redirige a la página principal o donde lo necesites
-
+        # Guardar un nuevo usuario en la base de datos
+        persona.objects.create(
+            nombre=nombre,
+            correo=correo,
+            password=confirm_password
+        )
+        messages.success(request, '¡Te has registrado exitosamente!')
+        return redirect('seccion')  # Redirige al inicio de sesión
     return render(request, 'registroV.html')
 
 
-def inicio_seccion(request):
+def iniciar_sesion(request):
+    # Inicio de sesión
     if request.method == 'POST':
-        correo = request.POST['correo']
-        password = request.POST['password']
-        
-        # Validar las credenciales
-        user = authenticate(request, correo=correo, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect('crear')  
+        correo = request.POST.get('correo', '')
+        password = request.POST.get('password', '')
+
+        # Buscar el usuario en la base de datos
+        persona_obj = persona.objects.filter(correo=correo, password=password).first()
+
+        if persona_obj:
+            # Redirige a la lista de tareas si las credenciales son válidas
+            return redirect('lista_tareas', persona_id=persona_obj.id)
         else:
-            messages.error(request, "Correo o contraseña incorrectos.")
-    
+            # Si las credenciales son incorrectas, muestra un mensaje de error
+            return render(request, 'registro.html', {'error': 'Credenciales incorrectas'})
+
     return render(request, 'registro.html')
 
 
+def lista_tareas(request, persona_id):
+    # Muestra las tareas de un usuario específico
+    persona_obj = get_object_or_404(persona, id=persona_id)
+     # Verificar si el usuario decide cerrar sesión
+    if 'cerrar_sesion' in request.GET:
+        logout(request)
+        return redirect('seccion')  # Redirige al inicio de sesión
+    tareas = Task.objects.filter(nombre=persona_obj)  # Tareas asociadas al usuario
+    return render(request, 'lista_tareas.html', {'persona': persona_obj, 'tareas': tareas})
 
 
+def crear_tarea(request, persona_id):
+    # Crear una nueva tarea para un usuario
+    persona_obj = get_object_or_404(persona, id=persona_id)
 
+    # Verificar si el usuario decide cerrar sesión
+    if 'cerrar_sesion' in request.GET:
+        logout(request)
+        return redirect('seccion')  # Redirige al inicio de sesión
 
-@login_required
-def create_task(request):
     if request.method == 'POST':
-        # Obtenemos los datos del formulario manualmente
-        title = request.POST.get('title')
-        description = request.POST.get('description')
-        completed = 'completed' in request.POST  # Si el checkbox está marcado, se considera True
+        title = request.POST.get('title', '')
+        description = request.POST.get('description', '')
+        completed = request.POST.get('completed', 'off') == 'on'
 
-        # Verificamos que los datos necesarios existan
-        if title and description:
-            task = Task.objects.create(
-                title=title,
-                description=description,
-                completed=completed,
-                user=request.user  # Asociamos la tarea con el usuario autenticado
-            )
-            return redirect('task_list')  # Redirigimos a la lista de tareas
+        # Guardar la nueva tarea en la base de datos
+        Task.objects.create(
+            title=title,
+            description=description,
+            completed=completed,
+            nombre=persona_obj
+        )
+        return redirect('lista_tareas', persona_id=persona_id)
 
-    return render(request, 'tarea.html')
+    return render(request, 'crear_tarea.html', {'persona': persona_obj})
 
 
-@login_required
-def task_list(request):
-    tasks = Task.objects.filter(user=request.user)  # Solo las tareas del usuario autenticado
-    return render(request, 'lista.html', {'tasks': tasks})
+def editar_tarea(request, tarea_id):
+    # Editar una tarea existente
+    tarea = get_object_or_404(Task, id=tarea_id)
+
+    if request.method == 'POST':
+        # Actualizar los datos de la tarea
+        tarea.title = request.POST.get('title', tarea.title)
+        tarea.description = request.POST.get('description', tarea.description)
+        tarea.completed = request.POST.get('completed', 'off') == 'on'
+        tarea.save()
+        return redirect('lista_tareas', persona_id=tarea.nombre.id)
+
+    return render(request, 'editar_tarea.html', {'tarea': tarea})
+
+
+def eliminar_tarea(request, tarea_id):
+    # Eliminar una tarea específica
+    tarea = get_object_or_404(Task, id=tarea_id)
+    persona_id = tarea.nombre.id  # ID del usuario asociado a la tarea
+    tarea.delete()  # Eliminar la tarea de la base de datos
+    return redirect('lista_tareas', persona_id=persona_id)
